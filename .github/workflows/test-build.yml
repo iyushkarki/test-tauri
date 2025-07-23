@@ -1,14 +1,14 @@
 # .github/workflows/test-build.yml
-name: 'Test macOS Build'
+name: "Test macOS Build"
 
 on:
-  workflow_dispatch:  # Manual trigger only
-  
+  workflow_dispatch: # Manual trigger only
+
 jobs:
   test-build:
     name: Test Build for macOS
     runs-on: macos-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -20,24 +20,32 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        # While macos-latest runners are aarch64-apple-darwin,
+        # explicitly setting this target here ensures the correct toolchain components are available.
+        # It's generally good practice, even if not strictly necessary for host compilation.
         with:
           targets: aarch64-apple-darwin
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: "./src-tauri -> target"
 
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
 
       - name: Just test the build (no release)
-        run: bun run tauri build -- --target aarch64-apple-darwin
+        # IMPORTANT: Removed '-- --target aarch64-apple-darwin'
+        # When building natively on a macos-latest (aarch64-apple-darwin) runner,
+        # Cargo will place the compiled binary in 'src-tauri/target/release/'.
+        # The Tauri bundler expects this default path.
+        run: bun run tauri build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: macos-app
+          # IMPORTANT: Updated the path to reflect the default release directory
           path: |
-            src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
-            src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app
+            src-tauri/target/release/bundle/dmg/*.dmg
+            src-tauri/target/release/bundle/macos/*.app
